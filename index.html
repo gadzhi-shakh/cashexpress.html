@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CASH EXPRESS Crash Game - Demo</title>
+    <style>
+        body {
+            background-color: #05050a;
+            color: #fff;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .header {
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+            background: linear-gradient(to bottom, #0f0f1a, transparent);
+            border-bottom: 1px solid #1a1a2e;
+        }
+        .logo {
+            color: #00ffcc;
+            font-weight: bold;
+            font-size: 20px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 480px;
+            position: relative;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .multiplier-display {
+            font-size: 46px;
+            font-weight: 800;
+            color: #fff;
+            margin: 10px 0;
+            transition: color 0.2s;
+            z-index: 10;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.8);
+        }
+        .multiplier-display.crashing {
+            color: #ff3355;
+        }
+        .multiplier-display.success {
+            color: #00ffcc;
+        }
+
+        /* Игровая зона с рельсами */
+        .railway-zone {
+            width: 100%;
+            height: 140px;
+            background: #0f0f1a;
+            border: 2px solid #1a1a2e;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.9);
+        }
+
+        /* Рельсы */
+        .tracks {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: repeating-linear-gradient(90deg, #333, #333 10px, #555 10px, #555 15px);
+        }
+
+        /* Поезд-Экспресс */
+        .express-train {
+            position: absolute;
+            bottom: 24px;
+            left: 10%;
+            font-size: 38px;
+            line-height: 1;
+            transition: transform 0.05s, left 0.1s ease-out;
+            z-index: 3;
+            filter: drop-shadow(0 0 8px #00ffcc);
+        }
+
+        /* Эффект шлейфа денег позади поезда */
+        .money-trail {
+            position: absolute;
+            bottom: 35px;
+            left: 0;
+            height: 30px;
+            width: 10%;
+            background: linear-gradient(to right, transparent, rgba(0, 255, 204, 0.2));
+            transition: width 0.1s ease-out;
+            pointer-events: none;
+        }
+
+        .explosion-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 51, 85, 0);
+            pointer-events: none;
+            z-index: 5;
+            transition: background-color 0.1s ease;
+        }
+
+        .control-panel {
+            width: 100%;
+            max-width: 420px;
+            padding: 15px;
+            box-sizing: border-box;
+            background: #0d0d18;
+            border: 2px solid #1a1a2e;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 5px;
+        }
+
+        .balance-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #8f8fbc;
+        }
+        .balance-value {
+            color: #00ffcc;
+            font-weight: bold;
+        }
+
+        .main-btn {
+            width: 100%;
+            height: 55px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #00ffcc, #00b3ff);
+            color: #05050a;
+        }
+
+        .btn-cashout {
+            background: linear-gradient(135deg, #ffcc00, #ff6600);
+            color: #000;
+        }
+
+        .btn-waiting {
+            background: #151525;
+            color: #444466;
+            cursor: not-allowed;
+        }
+
+        @keyframes trainShake {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-2px); }
+            100% { transform: translateY(0px); }
+        }
+        .train-moving {
+            animation: trainShake 0.1s infinite;
+        }
+
+        @keyframes speedShake {
+            0% { transform: translate(1px, 1px); }
+            20% { transform: translate(-1px, -1px); }
+            40% { transform: translate(-2px, 1px); }
+            60% { transform: translate(1px, -1px); }
+            80% { transform: translate(-1px, 2px); }
+            100% { transform: translate(1px, 1px); }
+        }
+        .shake-active {
+            animation: speedShake 0.1s infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="logo">⚡ CASH EXPRESS</div>
+    </div>
+
+    <div class="game-container" id="screen">
+        <div class="explosion-overlay" id="explosion"></div>
+        <div class="multiplier-display" id="multiplier">1.00x</div>
+        
+        <div class="railway-zone" id="railZone">
+            <div class="money-trail" id="trail"></div>
+            <div class="tracks"></div>
+            <div class="express-train" id="train">🚂</div>
+        </div>
+
+        <div class="control-panel">
+            <div class="balance-bar">
+                <span>Demo Balance:</span>
+                <span class="balance-value" id="balance">$1,000.00</span>
+            </div>
+            <button class="main-btn btn-start" id="mainBtn">Start Express</button>
+        </div>
+    </div>
+
+    <script>
+        let balance = 1000.00;
+        let currentMultiplier = 1.00;
+        let gameState = 'IDLE'; 
+        let gameLoopInterval;
+        let crashPoint = 0;
+        
+        const multiplierEl = document.getElementById('multiplier');
+        const trainEl = document.getElementById('train');
+        const trailEl = document.getElementById('trail');
+        const railZoneEl = document.getElementById('railZone');
+        const mainBtn = document.getElementById('mainBtn');
+        const balanceEl = document.getElementById('balance');
+        const explosionEl = document.getElementById('explosion');
+        const screenEl = document.getElementById('screen');
+
+        mainBtn.addEventListener('click', () => {
+            if (gameState === 'IDLE') {
+                startRound();
+            } else if (gameState === 'RUNNING') {
+                cashOut();
+            }
+        });
+
+        function startRound() {
+            gameState = 'RUNNING';
+            currentMultiplier = 1.00;
+            
+            multiplierEl.className = 'multiplier-display';
+            multiplierEl.innerText = '1.00x';
+            explosionEl.style.backgroundColor = 'rgba(255, 51, 85, 0)';
+            
+            // Сброс позиции поезда
+            trainEl.style.left = '10%';
+            trainEl.classList.add('train-moving');
+            trailEl.style.width = '10%';
+            
+            mainBtn.innerText = 'Pull Brake (Cash Out)';
+            mainBtn.className = 'main-btn btn-cashout';
+
+            // Точка краша
+            crashPoint = (Math.random() * 8.9 + 1.1).toFixed(2);
+            
+            gameLoopInterval = setInterval(() => {
+                currentMultiplier += 0.03; // Чуть быстрее скорость для экспресса
+                multiplierEl.innerText = currentMultiplier.toFixed(2) + 'x';
+                
+                // Поезд продвигается вперед по ходу роста коэффициента (макс до 70% экрана)
+                let position = Math.min(10 + (currentMultiplier - 1) * 12, 70);
+                trainEl.style.left = position + '%';
+                trailEl.style.width = position + '%';
+
+                // Эффект бешеной скорости на высоких иксах
+                if (currentMultiplier >= 2.50 && currentMultiplier < 5.00) {
+                    trainEl.style.filter = 'drop-shadow(0 0 12px #ff00ff)';
+                    railZoneEl.classList.add('shake-active');
+                } else if (currentMultiplier >= 5.00) {
+                    screenEl.classList.add('shake-active');
+                }
+
+                if (currentMultiplier >= crashPoint) {
+                    triggerCrash();
+                }
+            }, 50);
+        }
+
+        function triggerCrash() {
+            clearInterval(gameLoopInterval);
+            gameState = 'CRASHED';
+            
+            screenEl.classList.remove('shake-active');
+            railZoneEl.classList.remove('shake-active');
+            trainEl.classList.remove('train-moving');
+            
+            explosionEl.style.backgroundColor = 'rgba(255, 51, 85, 0.7)';
+            multiplierEl.className = 'multiplier-display crashing';
+            multiplierEl.innerText = '💥 DERAILMENT'; // Крушение поезда
+            
+            mainBtn.innerText = 'Train Crashed...';
+            mainBtn.className = 'main-btn btn-waiting';
+
+            setTimeout(() => {
+                resetToIdle();
+            }, 2500);
+        }
+
+        function cashOut() {
+            clearInterval(gameLoopInterval);
+            gameState = 'CASHED_OUT';
+            
+            let winAmount = 10 * currentMultiplier;
+            balance += winAmount;
+            balanceEl.innerText = '$' + balance.toFixed(2);
+
+            screenEl.classList.remove('shake-active');
+            railZoneEl.classList.remove('shake-active');
+            trainEl.classList.remove('train-moving');
+            
+            multiplierEl.className = 'multiplier-display success';
+            multiplierEl.innerText = 'Braked! ' + currentMultiplier.toFixed(2) + 'x';
+            
+            mainBtn.innerText = 'Win +$' + winAmount.toFixed(2);
+            mainBtn.className = 'main-btn btn-waiting';
+
+            setTimeout(() => {
+                resetToIdle();
+            }, 2000);
+        }
+
+        function resetToIdle() {
+            gameState = 'IDLE';
+            mainBtn.innerText = 'Start Express';
+            mainBtn.className = 'main-btn btn-start';
+            explosionEl.style.backgroundColor = 'rgba(255, 51, 85, 0)';
+            trainEl.style.left = '10%';
+            trailEl.style.width = '10%';
+            trainEl.style.filter = 'drop-shadow(0 0 8px #00ffcc)';
+            screenEl.classList.remove('shake-active');
+            railZoneEl.classList.remove('shake-active');
+        }
+    </script>
+</body>
+</html>
